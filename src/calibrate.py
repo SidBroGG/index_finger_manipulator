@@ -1,4 +1,5 @@
 import json
+import math
 import time
 
 import cv2
@@ -9,23 +10,38 @@ def take_images(image_count: int) -> list:
     cap = cv2.VideoCapture(0)
     images = []
 
-    for i in range(image_count):
-        print(f"\n{image_count - i} images left")
+    time_left = 3
+    next_second = math.floor(time.time()) + 1
 
-        for j in range(4):
-            print(f"camera shot in {3 - j}")
-            time.sleep(1)
+    cv2.namedWindow("img")
 
-        # Пробные снимки для экспозиции и баланса белого
-        for _ in range(5):
-            cap.grab()
-
+    while True:
         ret, frame = cap.read()
 
-        if ret:
-            images.append(frame)
+        if not ret:
+            continue
+
+        if time.time() >= next_second:
+            if time_left == 0:
+                images.append(frame.copy())
+
+                if len(images) == image_count:
+                    break
+
+                print(f"\n{image_count - len(images)} images left")
+                time_left = 3
+            else:
+                print(f"shot in {time_left}")
+                time_left -= 1
+
+            next_second += 1
+
+        cv2.imshow("img", frame)
+        cv2.waitKey(1)
 
     cap.release()
+    cv2.destroyAllWindows()
+
     return images
 
 
@@ -51,7 +67,13 @@ def run(chessboard: str, square_size: float, calibration_attempts: int):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray_shape = gray.shape[::-1]
 
-        ret, corners = cv2.findChessboardCorners(gray, (chess_cols, chess_rows), None)
+        ret, corners = cv2.findChessboardCorners(
+            gray,
+            (chess_cols, chess_rows),
+            cv2.CALIB_CB_ADAPTIVE_THRESH
+            + cv2.CALIB_CB_FAST_CHECK
+            + cv2.CALIB_CB_NORMALIZE_IMAGE,
+        )
 
         if ret:
             objpoints.append(objp)
@@ -62,7 +84,7 @@ def run(chessboard: str, square_size: float, calibration_attempts: int):
             imgpoints.append(refined_corners)
 
     ret, mtx, dist, _, _ = cv2.calibrateCamera(
-        objpoints, imgpoints, gray_shape, None, None
+        objpoints, imgpoints, gray_shape, None, None, flags=cv2.CALIB_FIX_K3
     )
 
     print(f"calibration rms: {ret}")

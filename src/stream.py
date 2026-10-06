@@ -53,9 +53,12 @@ def run():
         landmarks = hand_tracker.get_landmark_pixel(undisorted_frame.shape)
 
         if landmarks:
-            index_frame = draw_index_ray(undisorted_frame, *HandTracker.INDEX_FINGER_LINE)
-
-        cv2.imshow("img", index_frame)
+            idx1, idx2 = HandTracker.INDEX_FINGER_LINE
+            p1 = landmarks[idx1]
+            p2 = landmarks[idx2]
+            undisorted_frame = draw_index_ray(undisorted_frame, p1, p2)
+            
+        cv2.imshow("img", undisorted_frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
